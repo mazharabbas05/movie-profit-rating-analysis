@@ -1,65 +1,58 @@
-# Movie Profit vs Rating Analysis (SQL Practice)
+# Movie Profit vs Rating Analysis (SQL)
 
-Practice project on the `movies` and `financials` datasets — exploring the relationship between a movie's **profit margin** and its **IMDB rating**.
+SQL practice project on the `movies` and `financials` tables: do movies that make a lot of profit always have good ratings?
 
-## 📌 Problem Statements
+## Questions
 
-1. **High Profit Movies**
-   Find all movies where profit percentage `((revenue - budget) * 100 / budget)` is **≥ 500%**.
+1. Which movies made a profit of **500% or more**? Profit % = `(revenue - budget) * 100 / budget`.
+2. Which of those movies had an IMDB rating **below the average rating** of all movies?
+3. Supporting query: list all movies rated below the average rating.
 
-2. **High Profit but Below-Average Rating**
-   Find movies that made **500%+ profit** but had an **IMDB rating below the average rating of all movies** — i.e., did the movie make money despite not being well-received?
+## Approach
 
-3. **Below-Average Rated Movies (Supporting Query)**
-   List all movies with an IMDB rating **below the average rating** of all movies — used as an intermediate/reference query.
+- Calculated profit percentage as a derived column from the `financials` table.
+- Used a **scalar subquery** (`SELECT AVG(imdb_rating) FROM movies`) to get the overall average rating, and compared every movie against it.
+- Joined `financials` and `movies` on `movie_id` to bring profit and rating together.
+- Filtered with `pct_profit >= 500` on top of the below-average-rating result.
 
-## 🛠️ Approach
+## Queries
 
-- Used a derived column `pct_profit` to calculate profit percentage from `financials`.
-- Used a **correlated subquery** (`SELECT AVG(imdb_rating) FROM movies`) to compare each movie's rating against the overall average.
-- Joined `financials` and `movies` on `movie_id` to combine profit and rating data.
-- Combined both conditions (`pct_profit >= 500` **and** `imdb_rating < avg_rating`) using a `JOIN` + `WHERE` to get the final answer.
-
-## 📂 Queries
+The queries are in [`movie_profit_rating_queries.sql`](movie_profit_rating_queries.sql).
 
 ### 1. Movies with 500%+ profit
+
 ```sql
-select *, (revenue - budget) * 100 / budget as pct_profit
-from financials
-where (revenue - budget) * 100 / budget >= 500;
+SELECT *, (revenue - budget) * 100 / budget AS pct_profit
+FROM financials
+WHERE (revenue - budget) * 100 / budget >= 500;
 ```
 
-### 2. Movies with 500%+ profit AND below-average rating
+### 2. Movies with 500%+ profit and a below-average rating
+
 ```sql
-select
-  x.movie_id, x.pct_profit,
-  y.title, y.imdb_rating
-from (
-    select *, (revenue - budget) * 100 / budget as pct_profit
-    from financials
+SELECT x.movie_id, x.pct_profit, y.title, y.imdb_rating
+FROM (
+    SELECT *, (revenue - budget) * 100 / budget AS pct_profit
+    FROM financials
 ) x
-join (
-    select * from movies
-    where imdb_rating < (select avg(imdb_rating) from movies)
-) y
-using (movie_id)
-where pct_profit >= 500;
+JOIN (
+    SELECT * FROM movies
+    WHERE imdb_rating < (SELECT AVG(imdb_rating) FROM movies)
+) y USING (movie_id)
+WHERE pct_profit >= 500;
 ```
 
-### 3. Movies with below-average rating (supporting query)
+### 3. Movies rated below average
+
 ```sql
-select * from movies
-where imdb_rating < (select avg(imdb_rating) from movies);
+SELECT * FROM movies
+WHERE imdb_rating < (SELECT AVG(imdb_rating) FROM movies);
 ```
 
-## 💡 Key Insight
+## Takeaway
 
-This project highlights movies that were **commercially successful (500%+ profit) despite being rated below average** — useful for spotting cases where marketing/budget efficiency outperformed audience reception.
+Query 2 finds movies that earned very high returns even though audiences rated them below average. This is a useful check for cases where marketing or a low budget mattered more than reviews.
 
-## 🧰 Tech Used
+## SQL concepts used
 
-- SQL (subqueries, correlated subqueries, joins, derived columns)
-
----
-
-*Part of my SQL practice series — feedback welcome!*
+Derived columns, subqueries in `WHERE` and `FROM`, scalar subquery, joins with `USING`.
